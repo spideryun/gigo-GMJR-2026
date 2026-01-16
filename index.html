@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 GMJr. 競賽抽籤系統 - 專業版</title>
+    <style>
+        :root {
+            --cell-size: 60px;
+            --grass: #c6e0b4;
+            --sand: #fff2cc;
+            --water: #5b9bd5;
+            --red: #ff0000;
+            --green: #a9d08e;
+            --tribe: #ffc000;
+            --protect: #70ad47;
+
+            /* 字體大小變數 */
+            --fs-base: 0.8rem;
+            --fs-label: 0.9rem;
+            --fs-lottery-main: 1.3rem;
+            --fs-lottery-sub: 0.7rem;
+        }
+
+        .size-medium {
+            --fs-base: 1.0rem;
+            --fs-label: 1.1rem;
+            --fs-lottery-main: 1.7rem;
+            --fs-lottery-sub: 0.85rem;
+        }
+
+        .size-large {
+            --fs-base: 1.2rem;
+            --fs-label: 1.3rem;
+            --fs-lottery-main: 2.2rem;
+            --fs-lottery-sub: 1.0rem;
+        }
+
+        body { font-family: "Microsoft JhengHei", sans-serif; background-color: #f4f4f4; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
+        .header { text-align: center; margin-bottom: 20px; width: 100%; max-width: 1050px; }
+        
+        .controls-container { display: flex; flex-direction: column; align-items: center; gap: 15px; margin-bottom: 20px; width: 100%; }
+        
+        .setup-bar { display: flex; align-items: center; gap: 15px; background: #eee; padding: 10px 20px; border-radius: 8px; }
+        
+        .btn-draw { background-color: #2e518b; color: white; border: none; padding: 12px 40px; font-size: 1.2rem; border-radius: 4px; cursor: pointer; font-weight: bold; box-shadow: 0 4px #1a2d4d; }
+        .btn-draw:active { transform: translateY(2px); box-shadow: 0 2px #1a2d4d; }
+
+        /* 結果顯示區域 */
+        .result-list-box { 
+            display: flex; 
+            gap: 20px; 
+            background: #fff; 
+            padding: 15px 25px; 
+            border-radius: 8px; 
+            border: 2px solid #2e518b;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            min-width: 400px;
+            justify-content: center;
+        }
+        .result-group { display: flex; align-items: center; gap: 10px; font-size: 1.1rem; font-weight: bold; }
+        .res-label { padding: 4px 8px; border-radius: 4px; color: #fff; }
+        .res-coords { color: #333; letter-spacing: 1px; }
+        .bg-res-alien { background-color: #dc3545; }
+        .bg-res-native { background-color: #28a745; }
+
+        .grid-wrapper { background: white; padding: 10px; border: 2px solid #333; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .grid { 
+            display: grid; 
+            grid-template-columns: 40px repeat(16, var(--cell-size)); 
+            grid-template-rows: 30px repeat(8, var(--cell-size)); 
+            gap: 1px; 
+            background-color: #999; 
+        }
+
+        .cell { 
+            background-color: var(--grass); 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: var(--fs-base); 
+            text-align: center; 
+            font-weight: bold;
+            box-sizing: border-box;
+            border: 0.5px solid #bbb;
+            line-height: 1.2;
+        }
+
+        .label-cell { background-color: #fff !important; font-size: var(--fs-label); border: none; }
+        .bg-sand { background-color: var(--sand); }
+        .bg-water { background-color: var(--water); color: white; }
+        .bg-red { background-color: var(--red); color: white; }
+        .bg-green { background-color: var(--green); }
+        .bg-tribe { background-color: var(--tribe); }
+        .bg-protect { background-color: var(--protect); color: white; }
+
+        .cell.lottery-native { background-color: #28a745 !important; color: white !important; z-index: 100; border: 2px solid #fff; }
+        .cell.lottery-alien { background-color: #dc3545 !important; color: white !important; z-index: 100; border: 2px solid #fff; }
+        .lottery-text { font-size: var(--fs-lottery-main); }
+        .lottery-coord { font-size: var(--fs-lottery-sub); font-weight: normal; }
+
+        .span-h2 { grid-column: span 2; }
+        .span-v2 { grid-row: span 2; }
+    </style>
+</head>
+<body class="size-small">
+
+<div class="header">
+    <h1>2026 GMJr. 程式小創客 競賽地圖抽籤</h1>
+    
+    <div class="controls-container">
+        <div class="setup-bar">
+            <label for="fontSize">字體大小：</label>
+            <select id="fontSize" onchange="changeFontSize(this.value)">
+                <option value="size-small">小</option>
+                <option value="size-medium">中</option>
+                <option value="size-large">大</option>
+            </select>
+            <button class="btn-draw" onclick="draw()">進行隨機抽籤</button>
+        </div>
+
+        <div class="result-list-box" id="resultListBox" style="display: none;">
+            <div class="result-group">
+                <span class="res-label bg-res-alien">外來種</span>
+                <span class="res-coords" id="alienCoords">--</span>
+            </div>
+            <div style="border-left: 1px solid #ccc; height: 30px;"></div>
+            <div class="result-group">
+                <span class="res-label bg-res-native">原生種</span>
+                <span class="res-coords" id="nativeCoords">--</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="grid-wrapper">
+    <div class="grid" id="mapGrid"></div>
+</div>
+
+<script>
+    const cols = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P'];
+    const rows = [1,2,3,4,5,6,7,8];
+
+    const specialCells = {
+        "D1": {t:"看守所", c:"bg-green", cs:2},
+        "H1": {t:"森林大火", c:"bg-red", cs:2},
+        "L1": {t:"保育所", c:"bg-green", cs:2},
+        "N1": {t:"藍色<br>基地", c:"bg-water"},
+        "N2": {t:"↑", c:"bg-water"},
+        "C2": {t:"綠色<br>基地", c:"bg-green"},
+        "B2": {t:"→", c:"bg-green"},
+        "J2": {t:"原民<br>部落A", c:"bg-tribe"},
+        "K3": {t:"植物<br>配置", c:"bg-protect"},
+        "A4": {t:"設立<br>保護區", c:"bg-protect"},
+        "F4": {t:"→", c:"bg-red"},
+        "G4": {t:"紅色<br>基地", c:"bg-red"},
+        "C5": {t:"原民<br>部落B", c:"bg-tribe"},
+        "O5": {t:"水源<br>管理", c:"bg-protect"},
+        "A7": {t:"水<br>源<br>補<br>給<br>處", c:"bg-water", rs:2},
+        "D7": {t:"保育所", c:"bg-green", cs:2},
+        "L7": {t:"看守所", c:"bg-green", cs:2},
+        "O7": {t:"水<br>源<br>補<br>給<br>處", c:"bg-water", rs:2},
+        "P7": {t:"原民<br>部落C", c:"bg-tribe"},
+        "F8": {t:"棲地<br>營造", c:"bg-protect"},
+        "H8": {t:"START", c:"bg-tribe", cs:2}
+    };
+
+    const occupied = new Set();
+
+    function changeFontSize(sizeClass) {
+        document.body.className = sizeClass;
+    }
+
+    function initMap() {
+        const grid = document.getElementById('mapGrid');
+        grid.innerHTML = '';
+        occupied.clear();
+
+        grid.appendChild(createDiv('', 'cell label-cell'));
+        cols.forEach(c => grid.appendChild(createDiv(c, 'cell label-cell')));
+
+        rows.forEach(r => {
+            grid.appendChild(createDiv(r, 'cell label-cell'));
+            cols.forEach(c => {
+                const id = c + r;
+                if (occupied.has(id)) return;
+
+                let content = "";
+                let className = "cell";
+                const colIdx = cols.indexOf(c);
+                
+                if (r >= 3 && r <= 6 && colIdx >= 2 && colIdx <= 13) {
+                    className += " bg-sand";
+                }
+
+                if (specialCells[id]) {
+                    const sp = specialCells[id];
+                    content = sp.t;
+                    className += " " + sp.c;
+                    if (sp.cs) {
+                        className += ` span-h${sp.cs}`;
+                        for(let i=1; i<sp.cs; i++) occupied.add(cols[colIdx+i] + r);
+                    }
+                    if (sp.rs) {
+                        className += ` span-v${sp.rs}`;
+                        for(let i=1; i<sp.rs; i++) occupied.add(c + (r+i));
+                    }
+                }
+
+                const el = createDiv(content, className);
+                el.id = id;
+                el.dataset.originHtml = content;
+                el.dataset.originClass = className;
+                grid.appendChild(el);
+            });
+        });
+    }
+
+    function createDiv(html, className) {
+        const div = document.createElement('div');
+        div.className = className;
+        div.innerHTML = html;
+        return div;
+    }
+
+    const targetPool = ["C3","C4","C6","D3","D4","D5","D6","E3","E4","E5","E6","F3","F5","F6","G3","G5","G6","H3","H4","H5","H6","I3","I4","I5","I6","J3","J4","J5","J6","K4","K5","K6","L3","L4","L5","L6","M3","M4","M5","M6","N3","N4","N5","N6"];
+
+    function draw() {
+        // 重置地圖
+        document.querySelectorAll('.cell:not(.label-cell)').forEach(el => {
+            el.className = el.dataset.originClass;
+            el.innerHTML = el.dataset.originHtml;
+        });
+
+        // 隨機抽籤
+        let shuffled = [...targetPool].sort(() => 0.5 - Math.random());
+        const aliens = shuffled.slice(0, 6).sort(); // 排序方便閱讀
+        const natives = shuffled.slice(6, 12).sort();
+
+        // 渲染地圖效果
+        aliens.forEach(id => {
+            const el = document.getElementById(id);
+            if(el) {
+                el.className = 'cell lottery-alien';
+                el.innerHTML = `<div class="lottery-text">外</div><div class="lottery-coord">${id}</div>`;
+            }
+        });
+        natives.forEach(id => {
+            const el = document.getElementById(id);
+            if(el) {
+                el.className = 'cell lottery-native';
+                el.innerHTML = `<div class="lottery-text">原</div><div class="lottery-coord">${id}</div>`;
+            }
+        });
+
+        // 顯示文字結果清單
+        document.getElementById('resultListBox').style.display = 'flex';
+        document.getElementById('alienCoords').innerText = aliens.join(', ');
+        document.getElementById('nativeCoords').innerText = natives.join(', ');
+    }
+
+    initMap();
+</script>
+
+</body>
+</html>
