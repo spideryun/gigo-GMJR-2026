@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>2026 GMJr. 競賽抽籤系統 - 響應式專業版</title>
+    <style>
+        :root {
+            /* 預設格點大小：在桌面電腦最大 60px，在手機則根據視窗寬度自動計算 (17格+邊距) */
+            --cell-size: min(5.4vw, 60px); 
+            --grass: #c6e0b4;
+            --sand: #fff2cc;
+            --water: #5b9bd5;
+            --red: #ff0000;
+            --green: #a9d08e;
+            --tribe: #ffc000;
+            --protect: #70ad47;
+
+            /* 動態字體變數 */
+            --fs-base: calc(var(--cell-size) * 0.25);
+            --fs-label: calc(var(--cell-size) * 0.3);
+            --fs-lottery-main: calc(var(--cell-size) * 0.45);
+            --fs-lottery-sub: calc(var(--cell-size) * 0.2);
+        }
+
+        /* 中字體乘數 */
+        .size-medium {
+            --fs-base: calc(var(--cell-size) * 0.32);
+            --fs-label: calc(var(--cell-size) * 0.35);
+            --fs-lottery-main: calc(var(--cell-size) * 0.55);
+            --fs-lottery-sub: calc(var(--cell-size) * 0.25);
+        }
+
+        /* 大字體乘數 */
+        .size-large {
+            --fs-base: calc(var(--cell-size) * 0.4);
+            --fs-label: calc(var(--cell-size) * 0.42);
+            --fs-lottery-main: calc(var(--cell-size) * 0.7);
+            --fs-lottery-sub: calc(var(--cell-size) * 0.3);
+        }
+
+        body { 
+            font-family: "Microsoft JhengHei", "Heiti TC", sans-serif; 
+            background-color: #f4f4f4; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            padding: 10px; 
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        .header { text-align: center; margin-bottom: 15px; width: 100%; max-width: 1100px; }
+        h1 { font-size: clamp(1.2rem, 4vw, 1.8rem); margin: 10px 0; }
+
+        .controls-container { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 10px; 
+            margin-bottom: 15px; 
+            width: 100%; 
+        }
+        
+        .setup-bar { 
+            display: flex; 
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center; 
+            gap: 10px; 
+            background: #eee; 
+            padding: 8px 15px; 
+            border-radius: 8px;
+            width: fit-content;
+        }
+        
+        button { 
+            background-color: #2e518b; 
+            color: white; 
+            border: none; 
+            padding: 10px 25px; 
+            font-size: 1rem; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            box-shadow: 0 4px #1a2d4d; 
+        }
+        button:active { transform: translateY(2px); box-shadow: 0 2px #1a2d4d; }
+
+        /* 座標清單響應式調整 */
+        .result-list-box { 
+            display: flex; 
+            flex-wrap: wrap;
+            gap: 10px; 
+            background: #fff; 
+            padding: 10px; 
+            border-radius: 8px; 
+            border: 2px solid #2e518b;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            width: 95%;
+            max-width: 600px;
+            justify-content: center;
+            font-size: 0.9rem;
+        }
+        .result-group { display: flex; align-items: center; gap: 8px; font-weight: bold; }
+        .res-label { padding: 2px 6px; border-radius: 4px; color: #fff; font-size: 0.8rem; white-space: nowrap; }
+        .res-coords { color: #333; word-break: break-all; }
+        .bg-res-alien { background-color: #dc3545; }
+        .bg-res-native { background-color: #28a745; }
+
+        /* 地圖容器 */
+        .grid-wrapper { 
+            background: white; 
+            padding: 5px; 
+            border: 1px solid #333; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            max-width: 100vw;
+            overflow: hidden;
+        }
+
+        .grid { 
+            display: grid; 
+            /* 1(標籤) + 16(地圖) = 17欄 */
+            grid-template-columns: calc(var(--cell-size) * 0.7) repeat(16, var(--cell-size)); 
+            /* 1(標籤) + 8(地圖) = 9列 */
+            grid-template-rows: calc(var(--cell-size) * 0.6) repeat(8, var(--cell-size)); 
+            gap: 1px; 
+            background-color: #999; 
+        }
+
+        .cell { 
+            background-color: var(--grass); 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: var(--fs-base); 
+            text-align: center; 
+            font-weight: bold;
+            box-sizing: border-box;
+            border: 0.1px solid rgba(0,0,0,0.05);
+            line-height: 1.1;
+            word-break: break-all;
+        }
+
+        .label-cell { background-color: #fff !important; font-size: var(--fs-label); border: none; color: #666; }
+        
+        /* 顏色區域 */
+        .bg-sand { background-color: var(--sand); }
+        .bg-water { background-color: var(--water); color: white; }
+        .bg-red { background-color: var(--red); color: white; }
+        .bg-green { background-color: var(--green); }
+        .bg-tribe { background-color: var(--tribe); }
+        .bg-protect { background-color: var(--protect); color: white; }
+
+        /* 抽籤渲染 */
+        .cell.lottery-native { background-color: #28a745 !important; color: white !important; z-index: 10; border: 1.5px solid #fff; }
+        .cell.lottery-alien { background-color: #dc3545 !important; color: white !important; z-index: 10; border: 1.5px solid #fff; }
+        .lottery-text { font-size: var(--fs-lottery-main); }
+        .lottery-coord { font-size: var(--fs-lottery-sub); font-weight: normal; }
+
+        /* 跨格處理 */
+        .span-h2 { grid-column: span 2; }
+        .span-v2 { grid-row: span 2; }
+
+        /* 手機版小調整 */
+        @media (max-width: 600px) {
+            .setup-bar { width: 100%; }
+            .grid-wrapper { padding: 2px; }
+        }
+    </style>
+</head>
+<body class="size-small">
+
+<div class="header">
+    <h1>2026 GMJr. 競賽地圖抽籤</h1>
+    
+    <div class="controls-container">
+        <div class="setup-bar">
+            <label for="fontSize" style="font-weight:bold">字體：</label>
+            <select id="fontSize" onchange="document.body.className = this.value" style="padding:5px">
+                <option value="size-small">小</option>
+                <option value="size-medium">中</option>
+                <option value="size-large">大</option>
+            </select>
+            <button onclick="draw()">進行隨機抽籤</button>
+        </div>
+
+        <div class="result-list-box" id="resultListBox" style="display: none;">
+            <div class="result-group">
+                <span class="res-label bg-res-alien">外來種</span>
+                <span class="res-coords" id="alienCoords">--</span>
+            </div>
+            <div class="result-group">
+                <span class="res-label bg-res-native">原生種</span>
+                <span class="res-coords" id="nativeCoords">--</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="grid-wrapper">
+    <div class="grid" id="mapGrid"></div>
+</div>
+
+<script>
+    const cols = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P'];
+    const rows = [1,2,3,4,5,6,7,8];
+
+    const specialCells = {
+        "D1": {t:"看守所", c:"bg-green", cs:2},
+        "H1": {t:"森林大火", c:"bg-red", cs:2},
+        "L1": {t:"保育所", c:"bg-green", cs:2},
+        "N1": {t:"藍色<br>基地", c:"bg-water"},
+        "N2": {t:"↑", c:"bg-water"},
+        "C2": {t:"綠色<br>基地", c:"bg-green"},
+        "B2": {t:"→", c:"bg-green"},
+        "J2": {t:"原民<br>部落A", c:"bg-tribe"},
+        "K3": {t:"植物<br>配置", c:"bg-protect"},
+        "A4": {t:"設立<br>保護區", c:"bg-protect"},
+        "F4": {t:"→", c:"bg-red"},
+        "G4": {t:"紅色<br>基地", c:"bg-red"},
+        "C5": {t:"原民<br>部落B", c:"bg-tribe"},
+        "O5": {t:"水源<br>管理", c:"bg-protect"},
+        "A7": {t:"水源<br>補給", c:"bg-water", rs:2},
+        "D7": {t:"保育所", c:"bg-green", cs:2},
+        "L7": {t:"看守所", c:"bg-green", cs:2},
+        "O7": {t:"水源<br>補給", c:"bg-water", rs:2},
+        "P7": {t:"原民<br>部落C", c:"bg-tribe"},
+        "F8": {t:"棲地<br>營造", c:"bg-protect"},
+        "H8": {t:"START", c:"bg-tribe", cs:2}
+    };
+
+    const occupied = new Set();
+
+    function initMap() {
+        const grid = document.getElementById('mapGrid');
+        grid.innerHTML = '';
+        occupied.clear();
+
+        // 標題列
+        const empty = document.createElement('div');
+        empty.className = 'cell label-cell';
+        grid.appendChild(empty);
+        
+        cols.forEach(c => {
+            const div = document.createElement('div');
+            div.className = 'cell label-cell';
+            div.innerText = c;
+            grid.appendChild(div);
+        });
+
+        // 內容列
+        rows.forEach(r => {
+            const rowLabel = document.createElement('div');
+            rowLabel.className = 'cell label-cell';
+            rowLabel.innerText = r;
+            grid.appendChild(rowLabel);
+
+            cols.forEach(c => {
+                const id = c + r;
+                if (occupied.has(id)) return;
+
+                let content = "";
+                let className = "cell";
+                const colIdx = cols.indexOf(c);
+                
+                if (r >= 3 && r <= 6 && colIdx >= 2 && colIdx <= 13) {
+                    className += " bg-sand";
+                }
+
+                if (specialCells[id]) {
+                    const sp = specialCells[id];
+                    content = sp.t;
+                    className += " " + sp.c;
+                    if (sp.cs) {
+                        className += ` span-h${sp.cs}`;
+                        for(let i=1; i<sp.cs; i++) occupied.add(cols[colIdx+i] + r);
+                    }
+                    if (sp.rs) {
+                        className += ` span-v${sp.rs}`;
+                        for(let i=1; i<sp.rs; i++) occupied.add(c + (r+i));
+                    }
+                }
+
+                const el = document.createElement('div');
+                el.id = id;
+                el.className = className;
+                el.innerHTML = content;
+                el.dataset.originHtml = content;
+                el.dataset.originClass = className;
+                grid.appendChild(el);
+            });
+        });
+    }
+
+    const targetPool = ["C3","C4","C6","D3","D4","D5","D6","E3","E4","E5","E6","F3","F5","F6","G3","G5","G6","H3","H4","H5","H6","I3","I4","I5","I6","J3","J4","J5","J6","K4","K5","K6","L3","L4","L5","L6","M3","M4","M5","M6","N3","N4","N5","N6"];
+
+    function draw() {
+        // 重置
+        document.querySelectorAll('.cell:not(.label-cell)').forEach(el => {
+            el.className = el.dataset.originClass;
+            el.innerHTML = el.dataset.originHtml;
+        });
+
+        // 隨機抽籤
+        let shuffled = [...targetPool].sort(() => 0.5 - Math.random());
+        const aliens = shuffled.slice(0, 6).sort();
+        const natives = shuffled.slice(6, 12).sort();
+
+        aliens.forEach(id => {
+            const el = document.getElementById(id);
+            if(el) {
+                el.className = 'cell lottery-alien';
+                el.innerHTML = `<div class="lottery-text">外</div><div class="lottery-coord">${id}</div>`;
+            }
+        });
+        natives.forEach(id => {
+            const el = document.getElementById(id);
+            if(el) {
+                el.className = 'cell lottery-native';
+                el.innerHTML = `<div class="lottery-text">原</div><div class="lottery-coord">${id}</div>`;
+            }
+        });
+
+        // 顯示結果清單
+        document.getElementById('resultListBox').style.display = 'flex';
+        document.getElementById('alienCoords').innerText = aliens.join(', ');
+        document.getElementById('nativeCoords').innerText = natives.join(', ');
+    }
+
+    initMap();
+</script>
+
+</body>
+</html>
