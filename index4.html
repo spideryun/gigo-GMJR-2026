@@ -6,6 +6,7 @@
     <title>2026 GMJr. 競賽抽籤系統 - 特效版</title>
     <style>
         :root {
+            /* 預設格點大小：在桌面電腦最大 60px，在手機則根據視窗寬度自動計算 */
             --cell-size: min(5.4vw, 60px); 
             --grass: #c6e0b4;
             --sand: #fff2cc;
@@ -15,12 +16,14 @@
             --tribe: #ffc000;
             --protect: #70ad47;
 
+            /* 動態字體變數 */
             --fs-base: calc(var(--cell-size) * 0.25);
             --fs-label: calc(var(--cell-size) * 0.3);
             --fs-lottery-main: calc(var(--cell-size) * 0.45);
             --fs-lottery-sub: calc(var(--cell-size) * 0.2);
         }
 
+        /* 中字體乘數 */
         .size-medium {
             --fs-base: calc(var(--cell-size) * 0.32);
             --fs-label: calc(var(--cell-size) * 0.35);
@@ -28,6 +31,7 @@
             --fs-lottery-sub: calc(var(--cell-size) * 0.25);
         }
 
+        /* 大字體乘數 */
         .size-large {
             --fs-base: calc(var(--cell-size) * 0.4);
             --fs-label: calc(var(--cell-size) * 0.42);
@@ -72,7 +76,7 @@
         
         button { 
             border: none; 
-            padding: 10px 20px; 
+            padding: 10px 25px; 
             font-size: 1rem; 
             border-radius: 4px; 
             cursor: pointer; 
@@ -93,13 +97,7 @@
             opacity: 0.6;
         }
 
-        .btn-reset { 
-            background-color: #666; 
-            color: white; 
-            box-shadow: 0 4px #444; 
-        }
-        .btn-reset:active { transform: translateY(2px); box-shadow: 0 2px #444; }
-
+        /* 座標清單響應式調整 */
         .result-list-box { 
             display: flex; 
             flex-wrap: wrap;
@@ -153,7 +151,7 @@
             transition: background-color 0.1s, transform 0.1s;
         }
 
-        /* 掃描特效：改為紅綠交替 */
+        /* 掃描特效：紅綠交替 */
         .cell.scanning-alien {
             background-color: #dc3545 !important;
             color: white !important;
@@ -206,7 +204,6 @@
                 <option value="size-large">大</option>
             </select>
             <button id="drawBtn" class="btn-draw" onclick="startAnimation()">進行隨機抽籤</button>
-            <button id="resetBtn" class="btn-reset" onclick="resetMap()">重置地圖</button>
         </div>
 
         <div class="result-list-box" id="resultListBox" style="display: none;">
@@ -316,12 +313,21 @@
         });
     }
 
+    // 自動重置地圖邏輯
+    function autoReset() {
+        document.getElementById('resultListBox').style.display = 'none';
+        document.querySelectorAll('.cell:not(.label-cell)').forEach(el => {
+            el.className = el.dataset.originClass;
+            el.innerHTML = el.dataset.originHtml;
+        });
+    }
+
     async function startAnimation() {
         const drawBtn = document.getElementById('drawBtn');
-        const resetBtn = document.getElementById('resetBtn');
         
+        // 點下即鎖定，並先自動重置地圖
         drawBtn.disabled = true;
-        resetBtn.disabled = true;
+        autoReset();
 
         // 第一階段：快節奏 (0.3秒 5次)
         for (let i = 0; i < 5; i++) {
@@ -338,12 +344,11 @@
         }
 
         performFinalDraw();
-        resetBtn.disabled = false;
+        drawBtn.disabled = false; // 抽完之後重新啟動按鈕
     }
 
     function showRandomHighlight() {
         let tempShuffled = [...targetPool].sort(() => 0.5 - Math.random());
-        // 6個模擬外來，6個模擬原生
         let aliens = tempShuffled.slice(0, 6);
         let natives = tempShuffled.slice(6, 12);
         
@@ -386,15 +391,6 @@
         document.getElementById('resultListBox').style.display = 'flex';
         document.getElementById('alienCoords').innerText = aliens.join(', ');
         document.getElementById('nativeCoords').innerText = natives.join(', ');
-    }
-
-    function resetMap() {
-        document.getElementById('drawBtn').disabled = false;
-        document.getElementById('resultListBox').style.display = 'none';
-        document.querySelectorAll('.cell:not(.label-cell)').forEach(el => {
-            el.className = el.dataset.originClass;
-            el.innerHTML = el.dataset.originHtml;
-        });
     }
 
     initMap();
