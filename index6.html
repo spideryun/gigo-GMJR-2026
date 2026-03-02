@@ -65,9 +65,18 @@
             align-items: center; 
             gap: 10px; 
             background: #eee; 
-            padding: 8px 15px; 
+            padding: 10px 20px; 
             border-radius: 8px;
             width: fit-content;
+        }
+
+        /* 輸入框樣式 */
+        .info-input {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            width: 80px;
         }
         
         button { 
@@ -94,7 +103,6 @@
         }
 
         .btn-copy { background-color: #28a745; color: white; padding: 5px 12px; font-size: 0.8rem; margin-left: 10px; }
-        
         .btn-delete { background-color: #dc3545; color: white; padding: 4px 10px; font-size: 0.7rem; border-radius: 4px; }
 
         .result-list-box { 
@@ -176,8 +184,9 @@
             margin-top: 20px; width: 95%; max-width: 600px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 50px;
         }
         .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; }
-        .history-list { font-size: 0.8rem; color: #555; max-height: 200px; overflow-y: auto; }
-        .history-item { border-bottom: 1px solid #eee; padding: 8px 0; }
+        .history-list { font-size: 0.8rem; color: #555; max-height: 250px; overflow-y: auto; }
+        .history-item { border-bottom: 1px solid #eee; padding: 10px 0; }
+        .history-meta { color: #2e518b; font-weight: bold; margin-bottom: 3px; font-size: 0.85rem; }
         .cloud-status { font-size: 0.7rem; padding: 2px 8px; border-radius: 12px; }
         .cloud-online { background: #d4edda; color: #155724; }
         .cloud-offline { background: #f8d7da; color: #721c24; }
@@ -207,6 +216,11 @@
                 <option value="size-medium">中</option>
                 <option value="size-large">大</option>
             </select>
+            
+            <!-- 新增的賽道與隊伍編號輸入框 -->
+            <input type="text" id="arenaInput" class="info-input" placeholder="賽道">
+            <input type="text" id="teamInput" class="info-input" placeholder="隊伍編號">
+
             <button id="drawBtn" class="btn-draw" onclick="showConfirm()">進行隨機抽籤</button>
         </div>
 
@@ -243,7 +257,7 @@
 <div id="confirmModal">
     <div class="modal-content">
         <h3 style="margin-top:0">確認抽籤</h3>
-        <p>確定要開始隨機抽籤了嗎？<br>(地圖將被重置)</p>
+        <p id="confirmText">確定要開始隨機抽籤了嗎？<br>(地圖將被重置)</p>
         <div class="modal-btns">
             <button class="btn-no" onclick="closeModal('confirmModal')">取消</button>
             <button class="btn-yes" onclick="confirmDraw()">確定</button>
@@ -270,44 +284,26 @@
     import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, collection, addDoc, serverTimestamp, query, onSnapshot, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // -----------------------------------------------------------------
-    // 【這裡很重要！】
-    // 如果你在 GitHub 使用，請在這裡填入你從 Firebase 拿到的設定物件。
-    // 如果這裡維持 null，程式就會自動尋找 Canvas 的預設設定，找不到就離線。
-    // -----------------------------------------------------------------
     const manualConfig = {
-  apiKey: "AIzaSyDKkupZIoaOXbdp5wTxLVVBgIiax5hqYkU",
-  authDomain: "gmjrdatabase.firebaseapp.com",
-  projectId: "gmjrdatabase",
-  storageBucket: "gmjrdatabase.firebasestorage.app",
-  messagingSenderId: "604345900365",
-  appId: "1:604345900365:web:2011aabb5a0fd948a32b04",
-  measurementId: "G-TVBNJSM9J5"
-}; 
-    /* 範例格式：
-    const manualConfig = {
-        apiKey: "你的API金鑰",
-        authDomain: "你的專案.firebaseapp.com",
-        projectId: "你的專案ID",
-        storageBucket: "你的專案.firebasestorage.app",
-        messagingSenderId: "123456789",
-        appId: "1:123456789:web:abcdefg"
+        apiKey: "AIzaSyDKkupZIOaOXbdp5wTxLVVBgIiax5hqYkU",
+        authDomain: "gmjrdatabase.firebaseapp.com",
+        projectId: "gmjrdatabase",
+        storageBucket: "gmjrdatabase.firebasestorage.app",
+        messagingSenderId: "604345900365",
+        appId: "1:604345900365:web:2011aabb5a0fd948a32b04"
     };
-    */
 
     let db = null;
     let auth = null;
-    let appId = 'default-app-id';
+    let appId = 'gigo-lottery-2026';
     let currentUser = null;
 
     try {
         let config = null;
         if (manualConfig) {
             config = manualConfig;
-            appId = 'github-deploy-' + config.projectId;
         } else if (typeof __firebase_config !== 'undefined' && __firebase_config) {
             config = JSON.parse(__firebase_config);
-            appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         }
 
         if (config) {
@@ -316,10 +312,9 @@
             db = getFirestore(app);
         }
     } catch (e) {
-        console.warn("Firebase 初始化失敗，將以離線模式執行。");
+        console.warn("Firebase 初始化失敗。");
     }
 
-    // ---------------- 地圖初始化 (同前版本) ----------------
     const cols = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P'];
     const rows = [1,2,3,4,5,6,7,8];
     const specialCells = {
@@ -372,15 +367,10 @@
         });
     }
 
-    // ---------------- Auth & Sync ----------------
     const initAuth = async () => {
         if (!auth) return;
         try {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
-            }
+            await signInAnonymously(auth);
         } catch (e) { console.warn("Cloud features unavailable."); }
     };
 
@@ -411,6 +401,7 @@
 
             list.innerHTML = docs.map(d => `
                 <div class="history-item">
+                    <div class="history-meta">賽道: ${d.arena || '未填'} | 隊伍: ${d.teamId || '未填'}</div>
                     <b>${new Date(d.timestamp.toMillis()).toLocaleString()}</b><br>
                     外來: ${d.aliens.join(', ')} | 原生: ${d.natives.join(', ')}
                 </div>
@@ -418,8 +409,12 @@
         }, (err) => { console.error("Snapshot error:", err); });
     };
 
-    // ---------------- 核心功能 (同前版本) ----------------
-    window.showConfirm = () => { document.getElementById('confirmModal').style.display = 'flex'; };
+    window.showConfirm = () => { 
+        const arena = document.getElementById('arenaInput').value;
+        const team = document.getElementById('teamInput').value;
+        document.getElementById('confirmText').innerHTML = `賽道：${arena || '(未填)'}<br>隊伍：${team || '(未填)'}<br><br>確定要開始隨機抽籤了嗎？`;
+        document.getElementById('confirmModal').style.display = 'flex'; 
+    };
     window.showAdminModal = () => { 
         document.getElementById('adminPassword').value = '';
         document.getElementById('adminModal').style.display = 'flex'; 
@@ -429,13 +424,15 @@
 
     async function startAnimation() {
         const drawBtn = document.getElementById('drawBtn');
+        const arena = document.getElementById('arenaInput').value;
+        const teamId = document.getElementById('teamInput').value;
+
         drawBtn.disabled = true;
         document.getElementById('resultListBox').style.display = 'none';
         document.querySelectorAll('.cell:not(.label-cell)').forEach(el => {
             el.className = el.dataset.originClass; el.innerHTML = el.dataset.originHtml;
         });
 
-        // 動畫邏輯 (略...)
         for (let i = 0; i < 5; i++) { 
             let temp = [...targetPool].sort(() => 0.5 - Math.random());
             temp.slice(0, 6).forEach(id => document.getElementById(id)?.classList.add('scanning-alien'));
@@ -463,7 +460,12 @@
         if (currentUser && db) {
             try {
                 await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'lotteryResults'), {
-                    aliens, natives, timestamp: serverTimestamp(), userId: currentUser.uid
+                    aliens, 
+                    natives, 
+                    arena: arena || '未填',
+                    teamId: teamId || '未填',
+                    timestamp: serverTimestamp(), 
+                    userId: currentUser.uid
                 });
             } catch (e) { console.warn("Failed to upload results."); }
         }
@@ -485,9 +487,11 @@
     };
 
     window.copyResults = () => {
+        const arena = document.getElementById('arenaInput').value;
+        const team = document.getElementById('teamInput').value;
         const alien = document.getElementById('alienCoords').innerText;
         const native = document.getElementById('nativeCoords').innerText;
-        const text = `2026 GMJr. 抽籤結果\n外來種: ${alien}\n原生種: ${native}`;
+        const text = `2026 GMJr. 抽籤結果\n賽道: ${arena}\n隊伍: ${team}\n外來種: ${alien}\n原生種: ${native}`;
         const temp = document.createElement("textarea");
         document.body.appendChild(temp); temp.value = text; temp.select();
         document.execCommand("copy"); document.body.removeChild(temp);
