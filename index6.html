@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>2026 GMJr. 競賽抽籤系統 - 雲端管理版</title>
+    <title>2026 GMJr. 競賽抽籤系統 - 最終完備版</title>
     <style>
         :root {
             --cell-size: min(5.4vw, 60px); 
@@ -123,7 +123,7 @@
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
             max-width: 100vw;
             overflow: hidden;
-            min-height: 200px; /* 防止地圖未載入時縮成一條線 */
+            min-height: 200px;
         }
 
         .grid { 
@@ -147,6 +147,7 @@
             border: 0.1px solid rgba(0,0,0,0.05);
             line-height: 1.1;
             word-break: break-all;
+            transition: background-color 0.1s, transform 0.1s;
         }
 
         .cell.scanning-alien { background-color: #dc3545 !important; color: white !important; transform: scale(1.05); z-index: 5; box-shadow: 0 0 10px #dc3545; }
@@ -196,7 +197,7 @@
 <body class="size-small">
 
 <div class="header">
-    <h1>2026 GMJr. 競賽地圖抽籤系統 <span id="statusIndicator" class="cloud-status cloud-offline">離線</span></h1>
+    <h1>2026 GMJr. 抽籤系統 <span id="statusIndicator" class="cloud-status cloud-offline">離線</span></h1>
     
     <div class="controls-container">
         <div class="setup-bar">
@@ -269,26 +270,56 @@
     import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, collection, addDoc, serverTimestamp, query, onSnapshot, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // ---------------- Firebase 安全配置 ----------------
+    // -----------------------------------------------------------------
+    // 【這裡很重要！】
+    // 如果你在 GitHub 使用，請在這裡填入你從 Firebase 拿到的設定物件。
+    // 如果這裡維持 null，程式就會自動尋找 Canvas 的預設設定，找不到就離線。
+    // -----------------------------------------------------------------
+    const manualConfig = {
+  apiKey: "AIzaSyDKkupZIoaOXbdp5wTxLVVBgIiax5hqYkU",
+  authDomain: "gmjrdatabase.firebaseapp.com",
+  projectId: "gmjrdatabase",
+  storageBucket: "gmjrdatabase.firebasestorage.app",
+  messagingSenderId: "604345900365",
+  appId: "1:604345900365:web:2011aabb5a0fd948a32b04",
+  measurementId: "G-TVBNJSM9J5"
+}; 
+    /* 範例格式：
+    const manualConfig = {
+        apiKey: "你的API金鑰",
+        authDomain: "你的專案.firebaseapp.com",
+        projectId: "你的專案ID",
+        storageBucket: "你的專案.firebasestorage.app",
+        messagingSenderId: "123456789",
+        appId: "1:123456789:web:abcdefg"
+    };
+    */
+
     let db = null;
     let auth = null;
     let appId = 'default-app-id';
     let currentUser = null;
 
-    // 檢查環境變數是否存在，不存在則不啟用雲端功能
     try {
-        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-            const firebaseConfig = JSON.parse(__firebase_config);
+        let config = null;
+        if (manualConfig) {
+            config = manualConfig;
+            appId = 'github-deploy-' + config.projectId;
+        } else if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+            config = JSON.parse(__firebase_config);
             appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            const app = initializeApp(firebaseConfig);
+        }
+
+        if (config) {
+            const app = initializeApp(config);
             auth = getAuth(app);
             db = getFirestore(app);
         }
     } catch (e) {
-        console.warn("Firebase config missing or invalid. Running in offline mode.");
+        console.warn("Firebase 初始化失敗，將以離線模式執行。");
     }
 
-    // ---------------- 地圖初始化 ----------------
+    // ---------------- 地圖初始化 (同前版本) ----------------
     const cols = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P'];
     const rows = [1,2,3,4,5,6,7,8];
     const specialCells = {
@@ -358,7 +389,7 @@
             currentUser = user;
             const indicator = document.getElementById('statusIndicator');
             if (user) {
-                indicator.innerText = "雲端同步中"; indicator.className = "cloud-status cloud-online";
+                indicator.innerText = "雲端已連線"; indicator.className = "cloud-status cloud-online";
                 fetchHistory();
             } else {
                 indicator.innerText = "離線狀態"; indicator.className = "cloud-status cloud-offline";
@@ -387,14 +418,13 @@
         }, (err) => { console.error("Snapshot error:", err); });
     };
 
-    // ---------------- 核心功能 ----------------
+    // ---------------- 核心功能 (同前版本) ----------------
     window.showConfirm = () => { document.getElementById('confirmModal').style.display = 'flex'; };
     window.showAdminModal = () => { 
         document.getElementById('adminPassword').value = '';
         document.getElementById('adminModal').style.display = 'flex'; 
     };
     window.closeModal = (id) => { document.getElementById(id).style.display = 'none'; };
-
     window.confirmDraw = () => { closeModal('confirmModal'); startAnimation(); };
 
     async function startAnimation() {
@@ -405,6 +435,7 @@
             el.className = el.dataset.originClass; el.innerHTML = el.dataset.originHtml;
         });
 
+        // 動畫邏輯 (略...)
         for (let i = 0; i < 5; i++) { 
             let temp = [...targetPool].sort(() => 0.5 - Math.random());
             temp.slice(0, 6).forEach(id => document.getElementById(id)?.classList.add('scanning-alien'));
@@ -441,27 +472,16 @@
 
     window.processClearCloud = async () => {
         const pw = document.getElementById('adminPassword').value;
-        if (pw !== '2026gigo') {
-            showToast('密碼錯誤！本小姐才不會讓你亂動呢！');
-            return;
-        }
-        
-        if (!currentUser || !db) {
-            showToast('目前為離線模式，無法清除雲端資料。');
-            return;
-        }
-
-        showToast('正在清空雲端...請稍候');
+        if (pw !== '2026gigo') { showToast('密碼錯誤！'); return; }
+        if (!currentUser || !db) { showToast('目前為離線模式。'); return; }
+        showToast('正在清空雲端...');
         try {
             const querySnapshot = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'lotteryResults'));
             const deletePromises = querySnapshot.docs.map(d => deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'lotteryResults', d.id)));
             await Promise.all(deletePromises);
-            showToast('雲端已清空！這下乾淨了吧？');
+            showToast('雲端已清空！');
             closeModal('adminModal');
-        } catch (e) {
-            console.error(e);
-            showToast('清除失敗...發生了未知的錯誤');
-        }
+        } catch (e) { showToast('清除失敗。'); }
     };
 
     window.copyResults = () => {
@@ -480,7 +500,6 @@
         setTimeout(() => toast.style.opacity = '0', 3000);
     }
 
-    // 啟動流程：先初始化地圖，確保不被雲端報錯卡死
     initMap(); 
     initAuth();
 </script>
