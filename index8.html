@@ -257,7 +257,6 @@
             </select>
             
             <input type="text" id="arenaInput" class="info-input" placeholder="賽道">
-            <input type="text" id="teamInput" class="info-input" placeholder="隊伍編號">
 
             <button id="drawBtn" class="btn-draw" onclick="showConfirm()">進行隨機抽籤</button>
         </div>
@@ -369,8 +368,7 @@
 
     function showConfirm() { 
         const arena = document.getElementById('arenaInput').value;
-        const team = document.getElementById('teamInput').value;
-        document.getElementById('confirmText').innerHTML = `賽道：${arena || '(未填)'}<br>隊伍：${team || '(未填)'}<br><br>確定要開始雙階段隨機抽籤了嗎？`;
+        document.getElementById('confirmText').innerHTML = `賽道：${arena || '(未填)'}<br><br>確定要開始雙階段隨機抽籤了嗎？`;
         document.getElementById('confirmModal').style.display = 'flex'; 
     }
 
@@ -459,11 +457,10 @@
 
     function copyResults() {
         const arena = document.getElementById('arenaInput').value;
-        const team = document.getElementById('teamInput').value;
         const eventText = document.getElementById('eventResultText').innerText;
         const alien = document.getElementById('alienCoords').innerText;
         const native = document.getElementById('nativeCoords').innerText;
-        const text = `2026 GMJr. 抽籤結果\n賽道: ${arena}\n隊伍: ${team}\n事件: ${eventText}\n外來種: ${alien}\n原生種: ${native}`;
+        const text = `2026 GMJr. 抽籤結果\n賽道: ${arena}\n事件: ${eventText}\n外來種: ${alien}\n原生種: ${native}`;
         const temp = document.createElement("textarea");
         document.body.appendChild(temp); temp.value = text; temp.select();
         document.execCommand("copy"); document.body.removeChild(temp);
